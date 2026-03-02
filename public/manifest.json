@@ -1,0 +1,29 @@
+{
+    "name": "Habitual",
+    "short_name": "Habitual",
+    "description": "Tu rastreador de hábitos — Construí mejores hábitos día a día",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f0e8f8",
+    "theme_color": "#f0e8f8",
+    "orientation": "portrait",
+    "categories": [
+        "lifestyle",
+        "productivity",
+        "health"
+    ],
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
