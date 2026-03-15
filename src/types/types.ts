@@ -61,6 +61,7 @@ export interface Habit {
   archivedAt?: string; // ISO string for soft delete
   createdAt: string; // ISO string
   order: number;
+  groupOrders?: Record<string, number>; // per-group order, e.g. { "Mañana": 0, "Mediodía": 2 }
 }
 
 export interface HabitLog {

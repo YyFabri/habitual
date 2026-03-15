@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     signInWithGoogle,
     signInWithEmail,
@@ -14,6 +14,7 @@ import {
     setMergeInProgress,
     notifyMergeComplete,
     sendVerificationEmail,
+    handleRedirectResult,
 } from "@/services/authService";
 import { getUserProfileByEmail } from "@/services/habitService";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
@@ -49,6 +50,17 @@ export function LoginScreen() {
     const [emailToGoogleMerge, setEmailToGoogleMerge] = useState<EmailToGoogleMerge | null>(null);
     const [googleToEmailMerge, setGoogleToEmailMerge] = useState<GoogleToEmailMerge | null>(null);
     const [mergePassword, setMergePassword] = useState("");
+
+    // Handle redirect result on mount (for mobile/PWA Google sign-in)
+    useEffect(() => {
+        handleRedirectResult().then((user) => {
+            if (user) {
+                console.log("[LoginScreen] Redirect sign-in completed:", user.email);
+                setMergeInProgress(false);
+                notifyMergeComplete(user);
+            }
+        });
+    }, []);
 
     // ─── Email/Password Form Submit ──────────────────────────
     const handleEmailAuth = async (e: React.FormEvent) => {

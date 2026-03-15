@@ -1,6 +1,7 @@
 import {
     signInWithPopup,
     signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     EmailAuthProvider,
     linkWithCredential,
@@ -249,4 +250,20 @@ export function getCredentialFromError(error: unknown): OAuthCredential | null {
  */
 export async function sendVerificationEmail(user: FirebaseUser): Promise<void> {
     await sendEmailVerification(user);
+}
+
+/**
+ * Handle the result of a redirect-based Google sign-in.
+ * Should be called once on app load to process pending redirects.
+ */
+export async function handleRedirectResult(): Promise<FirebaseUser | null> {
+    try {
+        const result = await getRedirectResult(auth);
+        if (!result) return null;
+        return result.user;
+    } catch (error: unknown) {
+        const firebaseError = error as { code?: string };
+        console.error("[authService] Redirect result error:", firebaseError.code, error);
+        return null;
+    }
 }

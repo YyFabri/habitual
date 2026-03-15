@@ -162,11 +162,11 @@ export function NewHabitDialog() {
 
     return (
         <Dialog open={showNewHabitDialog} onOpenChange={handleClose}>
-            <DialogContent className="rounded-3xl max-w-md mx-4 max-h-[90vh] overflow-y-auto bg-card border-0 bubble-shadow-lg">
+            <DialogContent className="rounded-3xl max-w-[calc(100%-2rem)] sm:max-w-md max-h-[90vh] overflow-y-auto bg-card border-0 bubble-shadow-lg">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold">Nuevo Hábito</DialogTitle>
+                    <DialogTitle className="text-xl font-bold">{editingHabitId ? "Editar Hábito" : "Nuevo Hábito"}</DialogTitle>
                     <DialogDescription className="text-muted-foreground text-sm">
-                        Crea un nuevo hábito para rastrear tu progreso diario.
+                        {editingHabitId ? "Modificá los datos de tu hábito." : "Crea un nuevo hábito para rastrear tu progreso diario."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -512,16 +512,16 @@ export function NewHabitDialog() {
                     {/* Submit */}
                     <Button
                         type="submit"
-                        disabled={createHabit.isPending}
+                        disabled={createHabit.isPending || updateHabit.isPending}
                         className="w-full h-12 rounded-2xl font-semibold text-base bubble-shadow bg-primary hover:bg-primary/90 transition-all active:scale-[0.98]"
                     >
-                        {createHabit.isPending ? (
+                        {(createHabit.isPending || updateHabit.isPending) ? (
                             <span className="flex items-center gap-2">
                                 <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Creando...
+                                {editingHabitId ? "Guardando..." : "Creando..."}
                             </span>
                         ) : (
-                            "Crear Hábito"
+                            editingHabitId ? "Guardar Cambios" : "Crear Hábito"
                         )}
                     </Button>
                 </form>

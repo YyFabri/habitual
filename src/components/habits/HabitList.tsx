@@ -92,7 +92,16 @@ export function HabitList() {
             return a.localeCompare(b);
         });
 
-        return sorted.map(g => [g, groupMap.get(g)!] as [string, Habit[]]);
+        return sorted.map(g => {
+            const habitsInGroup = groupMap.get(g)!;
+            // Sort habits within each group by their group-specific order
+            habitsInGroup.sort((a, b) => {
+                const orderA = a.groupOrders?.[g] ?? a.order ?? 0;
+                const orderB = b.groupOrders?.[g] ?? b.order ?? 0;
+                return orderA - orderB;
+            });
+            return [g, habitsInGroup] as [string, Habit[]];
+        });
     }, [todayHabits, user?.groupsOrder]);
 
     const logsMap = useMemo(() => {
@@ -139,11 +148,17 @@ export function HabitList() {
     const handleMoveHabit = (habit: Habit, direction: "up" | "down") => {
         hapticTap();
         const habitId = habit.id;
+        // Find which group this habit appears in (use the first group entry containing it)
         const groupEntry = groupedHabits.find(([, habits]) => habits.some(h => h.id === habitId));
         if (!groupEntry) return;
 
-        const groupHabitsList = groupEntry[1];
-        const sorted = [...groupHabitsList].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const [groupName, groupHabitsList] = groupEntry;
+        // Sort by group-specific order
+        const sorted = [...groupHabitsList].sort((a, b) => {
+            const orderA = a.groupOrders?.[groupName] ?? a.order ?? 0;
+            const orderB = b.groupOrders?.[groupName] ?? b.order ?? 0;
+            return orderA - orderB;
+        });
 
         const currentIndex = sorted.findIndex(h => h.id === habitId);
         if (currentIndex === -1) return;
@@ -153,9 +168,17 @@ export function HabitList() {
         if (direction === "down" && currentIndex < sorted.length - 1) targetIndex = currentIndex + 1;
 
         if (targetIndex !== -1) {
-            const updates = sorted.map((h, i) => ({ id: h.id, data: { order: i } }));
-            [updates[currentIndex].data.order, updates[targetIndex].data.order] =
-                [updates[targetIndex].data.order, updates[currentIndex].data.order];
+            // Build updates that only change groupOrders for this specific group
+            const updates = sorted.map((h, i) => {
+                const newGroupOrders = { ...(h.groupOrders || {}) };
+                newGroupOrders[groupName] = i;
+                return { id: h.id, data: { groupOrders: newGroupOrders } };
+            });
+            // Swap the group-specific orders
+            const currentGroupOrders = { ...(sorted[currentIndex].groupOrders || {}) };
+            const targetGroupOrders = { ...(sorted[targetIndex].groupOrders || {}) };
+            updates[currentIndex].data.groupOrders[groupName] = targetGroupOrders[groupName] ?? targetIndex;
+            updates[targetIndex].data.groupOrders[groupName] = currentGroupOrders[groupName] ?? currentIndex;
             batchUpdate.mutate(updates);
         }
     };

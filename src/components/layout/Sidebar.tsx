@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     Sheet,
     SheetContent,
@@ -27,6 +27,7 @@ export function Sidebar() {
     const { showSidebar, setShowSidebar } = useHabitStore();
     const user = useUserStore((s) => s.user);
     const router = useRouter();
+    const pathname = usePathname();
 
     const handleSignOut = async () => {
         hapticTap();
@@ -76,15 +77,19 @@ export function Sidebar() {
                     <SidebarItem
                         icon={Home}
                         label="Inicio"
-                        active
-                        onClick={() => setShowSidebar(false)}
+                        active={pathname === "/"}
+                        onClick={() => {
+                            setShowSidebar(false);
+                            if (pathname !== "/") router.push("/");
+                        }}
                     />
                     <SidebarItem
                         icon={BarChart3}
                         label="Estadísticas"
+                        active={pathname === "/estadisticas"}
                         onClick={() => {
                             setShowSidebar(false);
-                            router.push("/estadisticas");
+                            if (pathname !== "/estadisticas") router.push("/estadisticas");
                         }}
                     />
                     <SidebarItem

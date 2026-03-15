@@ -66,7 +66,13 @@ export class FirestoreHabitRepository implements IHabitRepository {
     }
 
     async deleteHabit(userId: string, habitId: string): Promise<void> {
-        return habitService.deleteHabit(userId, habitId);
+        // Smart delete: archive only if the habit has completion history
+        const hasLogs = await habitService.hasHabitLogs(userId, habitId);
+        if (hasLogs) {
+            return habitService.deleteHabit(userId, habitId); // soft delete (archive)
+        } else {
+            return habitService.hardDeleteHabit(userId, habitId); // hard delete
+        }
     }
 
     // ─── Logs ────────────────────────────────────────────────

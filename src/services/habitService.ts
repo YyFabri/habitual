@@ -119,6 +119,19 @@ export async function deleteHabit(userId: string, habitId: string): Promise<void
     } as Partial<Habit>);
 }
 
+export async function hardDeleteHabit(userId: string, habitId: string): Promise<void> {
+    await deleteDoc(doc(habitsCol(userId), habitId));
+}
+
+export async function hasHabitLogs(userId: string, habitId: string): Promise<boolean> {
+    const q = query(
+        historyCol(userId),
+        where("habitId", "==", habitId)
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+}
+
 // ─── History / Logs ──────────────────────────────────────────
 
 export async function getHabitLogs(
