@@ -44,6 +44,7 @@ export interface User {
   isAnonymous: boolean;
   createdAt: string; // ISO string
   groupsOrder: string[]; // Order of group names for display
+  dayChangeHour?: number; // Hour of day when "today" changes (default 3)
 }
 
 export interface Habit {

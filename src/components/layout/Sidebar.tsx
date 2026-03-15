@@ -95,8 +95,11 @@ export function Sidebar() {
                     <SidebarItem
                         icon={Settings}
                         label="Configuración"
-                        onClick={() => setShowSidebar(false)}
-                        badge="Pronto"
+                        active={pathname === "/configuracion"}
+                        onClick={() => {
+                            setShowSidebar(false);
+                            if (pathname !== "/configuracion") router.push("/configuracion");
+                        }}
                     />
 
                     <div className="h-px bg-border my-4" />
