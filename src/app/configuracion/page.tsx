@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UpgradeModal } from "@/components/premium/UpgradeModal";
 import { NewHabitDialog } from "@/components/habits/NewHabitDialog";
+import { OfflineIndicator } from "@/components/layout/OfflineIndicator";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +26,10 @@ import {
     Camera,
     Shield,
     Sparkles,
+    HelpCircle,
+    Mail,
+    MessageCircle,
+    ChevronDown,
 } from "lucide-react";
 import { signOut } from "@/services/authService";
 import { useEffect } from "react";
@@ -190,6 +195,65 @@ function DayChangeSelector() {
     );
 }
 
+// ─── FAQ Item ───────────────────────────────────────────────
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className="px-4 py-3">
+            <button
+                onClick={() => {
+                    hapticTap();
+                    setOpen(!open);
+                }}
+                className="w-full flex items-center justify-between text-left"
+            >
+                <p className="text-sm font-medium pr-4">{question}</p>
+                <ChevronDown
+                    className={cn(
+                        "h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200",
+                        open && "rotate-180"
+                    )}
+                />
+            </button>
+            {open && (
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed animate-[fade-in_0.2s_ease-out]">
+                    {answer}
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ─── Image Resize Utility ───────────────────────────────────
+function resizeImageToBase64(file: File, maxSize: number = 128): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = maxSize;
+                canvas.height = maxSize;
+                const ctx = canvas.getContext("2d")!;
+
+                // Crop to square (center)
+                const min = Math.min(img.width, img.height);
+                const sx = (img.width - min) / 2;
+                const sy = (img.height - min) / 2;
+                ctx.drawImage(img, sx, sy, min, min, 0, 0, maxSize, maxSize);
+
+                // Compress as JPEG at 70% quality
+                resolve(canvas.toDataURL("image/jpeg", 0.7));
+            };
+            img.onerror = reject;
+            img.src = e.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 // ─── Main Settings Page ─────────────────────────────────────
 export default function ConfiguracionPage() {
     const user = useUserStore((s) => s.user);
@@ -199,6 +263,7 @@ export default function ConfiguracionPage() {
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(user?.displayName ?? "");
     const nameInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!user) {
@@ -223,9 +288,37 @@ export default function ConfiguracionPage() {
         setEditingName(false);
     };
 
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            alert("Por favor seleccioná una imagen.");
+            return;
+        }
+
+        // Validate file size (max 5MB before compression)
+        if (file.size > 5 * 1024 * 1024) {
+            alert("La imagen es muy grande. Máximo 5MB.");
+            return;
+        }
+
+        try {
+            hapticTap();
+            const base64 = await resizeImageToBase64(file, 128);
+            updateProfile.mutate({ photoURL: base64 });
+            hapticSuccess();
+        } catch {
+            alert("Error al procesar la imagen. Intentá con otra.");
+        }
+
+        // Reset input so the same file can be selected again
+        e.target.value = "";
+    };
+
     const handleExportData = () => {
         hapticTap();
-        // Fetch all data and download as JSON
         import("@/repositories/FirestoreHabitRepository").then(async ({ habitRepository }) => {
             const habits = await habitRepository.getHabits(user.uid);
             const logs = await habitRepository.getAllHabitLogs(user.uid);
@@ -255,7 +348,6 @@ export default function ConfiguracionPage() {
         if (!confirm("Esta es tu última oportunidad. ¿Eliminar cuenta permanentemente?")) return;
         hapticTap();
         try {
-            // Sign out first (account deletion requires recent auth)
             await signOut();
         } catch (e) {
             console.error("Delete account error:", e);
@@ -264,6 +356,7 @@ export default function ConfiguracionPage() {
 
     return (
         <div className="min-h-dvh bg-bubble-bg flex flex-col">
+            <OfflineIndicator />
             <AppHeader />
 
             <main className="flex-1 pb-safe overflow-y-auto">
@@ -272,7 +365,6 @@ export default function ConfiguracionPage() {
 
                     {/* ─── Profile Section ─────────────────────── */}
                     <SettingSection title="Perfil">
-                        {/* Avatar */}
                         <div className="px-4 py-4 flex items-center gap-4">
                             <div className="relative">
                                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-pastel-purple to-pastel-blue flex items-center justify-center overflow-hidden">
@@ -287,11 +379,18 @@ export default function ConfiguracionPage() {
                                         <UserCircle className="h-8 w-8 text-white" />
                                     )}
                                 </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handlePhotoUpload}
+                                />
                                 <button
                                     className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center bubble-shadow"
                                     onClick={() => {
                                         hapticTap();
-                                        alert("La edición de foto de perfil estará disponible próximamente. Por ahora, tu foto se sincroniza con Google.");
+                                        fileInputRef.current?.click();
                                     }}
                                 >
                                     <Camera className="h-3.5 w-3.5" />
@@ -371,6 +470,48 @@ export default function ConfiguracionPage() {
                         />
                     </SettingSection>
 
+                    {/* ─── Help & Contact Section ─────────────── */}
+                    <SettingSection title="Ayuda y contacto">
+                        <FaqItem
+                            question="¿Cómo creo un hábito?"
+                            answer="Tocá el botón '+' en la pantalla principal. Elegí un nombre, ícono, color, y los días en que querés rastrearlo."
+                        />
+                        <FaqItem
+                            question="¿Qué pasa si borro un hábito?"
+                            answer="Si el hábito tiene historial de completados se archiva (tu progreso pasado se mantiene). Si nunca lo completaste, se borra por completo."
+                        />
+                        <FaqItem
+                            question="¿La app funciona sin internet?"
+                            answer="¡Sí! Tus datos se guardan localmente y se sincronizan cuando vuelvas a tener conexión."
+                        />
+                        <FaqItem
+                            question="¿Cómo cambio el tema oscuro/claro?"
+                            answer="En Configuración → Apariencia podés elegir entre Claro, Oscuro, o Auto (sigue el tema de tu dispositivo)."
+                        />
+                        <FaqItem
+                            question="¿Qué es el 'Cambio de día'?"
+                            answer="Es la hora a la que la app considera que empieza un nuevo día. Si ponés 3:00, hasta las 2:59 AM sigue siendo 'ayer'. Útil para noctámbulos."
+                        />
+                        <SettingRow
+                            icon={Mail}
+                            label="Contacto por email"
+                            description="Envianos tus dudas o sugerencias"
+                            onClick={() => {
+                                hapticTap();
+                                window.open("mailto:soporte@habitual.app?subject=Consulta%20Habitual", "_blank");
+                            }}
+                        />
+                        <SettingRow
+                            icon={MessageCircle}
+                            label="Reportar un error"
+                            description="Ayudanos a mejorar la app"
+                            onClick={() => {
+                                hapticTap();
+                                window.open("https://github.com/YyFabri/habitual/issues/new", "_blank");
+                            }}
+                        />
+                    </SettingSection>
+
                     {/* ─── Account Section ─────────────────────── */}
                     <SettingSection title="Cuenta">
                         <SettingRow
@@ -415,6 +556,14 @@ export default function ConfiguracionPage() {
                                 hecho con 💜
                             </span>
                         </SettingRow>
+                        <div className="px-4 py-3 text-center">
+                            <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                                © {new Date().getFullYear()} YyFabri. Todos los derechos reservados.
+                                <br />
+                                Habitual es una marca registrada. Queda prohibida la reproducción
+                                total o parcial sin autorización.
+                            </p>
+                        </div>
                     </SettingSection>
                 </div>
             </main>

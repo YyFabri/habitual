@@ -9,6 +9,7 @@ import {
     query,
     where,
     orderBy,
+    limit,
     serverTimestamp,
     writeBatch,
     type DocumentData,
@@ -124,9 +125,11 @@ export async function hardDeleteHabit(userId: string, habitId: string): Promise<
 }
 
 export async function hasHabitLogs(userId: string, habitId: string): Promise<boolean> {
+    // Only fetch 1 doc to check existence — saves reads
     const q = query(
         historyCol(userId),
-        where("habitId", "==", habitId)
+        where("habitId", "==", habitId),
+        limit(1)
     );
     const snap = await getDocs(q);
     return !snap.empty;
@@ -147,9 +150,11 @@ export async function getHabitLogs(
 }
 
 export async function getAllHabitLogs(userId: string): Promise<HabitLog[]> {
+    // Safety cap to prevent reading thousands of docs
     const q = query(
         historyCol(userId),
-        orderBy("date", "desc")
+        orderBy("date", "desc"),
+        limit(1000)
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HabitLog);

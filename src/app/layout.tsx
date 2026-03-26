@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description:
     "Construí mejores hábitos día a día con Habitual. Rastreá tu progreso, mantené la constancia y alcanzá tus metas.",
   manifest: "/manifest.json",
+  authors: [{ name: "YyFabri" }],
+  creator: "YyFabri",
+  other: {
+    "copyright": "© 2025-2026 YyFabri. Todos los derechos reservados.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

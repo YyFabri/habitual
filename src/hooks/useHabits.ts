@@ -16,7 +16,8 @@ export function useHabits() {
         queryKey: queryKeys.habits.all(user?.uid ?? ""),
         queryFn: () => habitRepository.getHabits(user!.uid),
         enabled: !!user?.uid,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 60 * 10, // 10 minutes
+        gcTime: 1000 * 60 * 30, // keep in memory 30 min
     });
 }
 
@@ -30,7 +31,8 @@ export function useHabitLogs(date?: Date) {
         queryKey: queryKeys.logs.byDate(user?.uid ?? "", dateStr),
         queryFn: () => habitRepository.getHabitLogs(user!.uid, dateStr),
         enabled: !!user?.uid,
-        staleTime: 1000 * 60 * 2,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 30, // keep in memory 30 min
     });
 }
 
