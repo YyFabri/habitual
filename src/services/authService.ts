@@ -267,3 +267,10 @@ export async function handleRedirectResult(): Promise<FirebaseUser | null> {
         return null;
     }
 }
+
+// ─── Resend Verification Email ───────────────────────────────
+export async function resendVerificationEmail(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No hay usuario autenticado");
+    await sendEmailVerification(user);
+}

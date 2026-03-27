@@ -32,33 +32,48 @@ export function HabitList() {
     const todayHabits = useMemo(() => {
         if (!habits) return [];
         return habits.filter((h) => {
-            // 1. Frequency Check
-            if (!h.frequency.includes(dayOfWeek)) return false;
+            // 0. Skip paused habits (Premium vacation mode)
+            if (h.pausedAt) {
+                if (!h.pausedUntil) return false; // paused indefinitely
+                const pauseEnd = new Date(h.pausedUntil);
+                if (selectedDate <= pauseEnd) return false;
+            }
 
-            // 2. Creation Date Check (Don't show in past before creation)
+            const freqType = h.frequencyType ?? "weekly";
+
+            // 1. Frequency Check based on type
+            if (freqType === "weekly") {
+                if (!h.frequency.includes(dayOfWeek)) return false;
+            } else if (freqType === "every_x_days") {
+                const interval = h.frequencyInterval ?? 2;
+                const startDate = h.frequencyStartDate
+                    ? new Date(h.frequencyStartDate)
+                    : new Date(h.createdAt);
+                const diffMs = selectedDate.getTime() - startDate.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                if (diffDays < 0 || diffDays % interval !== 0) return false;
+            } else if (freqType === "specific_dates") {
+                const dates = h.frequencySpecificDates ?? [];
+                if (!dates.includes(selectedDateStr)) return false;
+            } else if (freqType === "x_per_week") {
+                // For x_per_week, always show — the user decides which days
+                // We just show every day and the user tracks completion
+            }
+
+            // 2. Creation Date Check
             const createdDateStr = formatFunctionalDate(new Date(h.createdAt));
             if (createdDateStr > selectedDateStr) return false;
 
-            // 3. Archive Date Check (Show in past if active then)
+            // 3. Archive Date Check
             if (h.archived) {
-                // If soft deleted, use archivedAt if available.
-                // If migrated without archivedAt, use 'now' or hide? 
-                // We added archivedAt to new deletes. Old deletes? 
-                // Old deletes are hard deleted (gone).
-                // Existing active habits have archived=false.
-                if (!h.archivedAt) return false; // Should not happen for new archives
-
+                if (!h.archivedAt) return false;
                 const archivedDateStr = formatFunctionalDate(new Date(h.archivedAt));
-                // Hide if archived ON or BEFORE selected date (viewing day of deletion or later)
-                // If view date < archive date, show it.
-                // e.g. View Yesterday < Archive Today -> Show.
-                // View Today == Archive Today -> Hide.
                 if (selectedDateStr >= archivedDateStr) return false;
             }
 
             return true;
         });
-    }, [habits, dayOfWeek, selectedDateStr]);
+    }, [habits, dayOfWeek, selectedDateStr, selectedDate]);
 
     // Group habits by their groups
     const groupedHabits = useMemo(() => {

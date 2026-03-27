@@ -18,6 +18,7 @@ export function useHabits() {
         enabled: !!user?.uid,
         staleTime: 1000 * 60 * 10, // 10 minutes
         gcTime: 1000 * 60 * 30, // keep in memory 30 min
+        refetchOnWindowFocus: false, // avoid redundant reads
     });
 }
 
@@ -33,6 +34,7 @@ export function useHabitLogs(date?: Date) {
         enabled: !!user?.uid,
         staleTime: 1000 * 60 * 5, // 5 minutes
         gcTime: 1000 * 60 * 30, // keep in memory 30 min
+        refetchOnWindowFocus: false, // avoid redundant reads
     });
 }
 
@@ -47,9 +49,12 @@ export function useCreateHabit() {
         mutationFn: async (data) => {
             if (!user) throw new Error("No autenticado");
 
-            // Get current count for order
-            const existing = await habitRepository.getHabits(user.uid);
-            return habitRepository.createHabit(user.uid, data, existing.length);
+            // Use cached habits count instead of extra Firestore read
+            const cached = queryClient.getQueryData<Habit[]>(
+                queryKeys.habits.all(user.uid)
+            );
+            const order = cached?.length ?? 0;
+            return habitRepository.createHabit(user.uid, data, order);
         },
         onSuccess: () => {
             if (user) {

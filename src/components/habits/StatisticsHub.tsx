@@ -6,7 +6,7 @@ import { habitRepository } from "@/repositories/FirestoreHabitRepository";
 import { useUserStore } from "@/store/useUserStore";
 import { formatFunctionalDate, getDayIndex } from "@/utils/functionalDate";
 import { ICON_MAP } from "@/utils/habitIcons";
-import { HABIT_COLORS, Habit } from "@/types/types";
+import { resolveColorHex, Habit } from "@/types/types";
 import { useMemo } from "react";
 import { Flame, Target, CalendarDays, TrendingUp, Trophy } from "lucide-react";
 
@@ -26,6 +26,8 @@ export function StatisticsHub() {
             return habitRepository.getAllHabitLogs(user.uid);
         },
         enabled: !!user?.uid,
+        staleTime: 1000 * 60 * 30, // 30 minutes — this is an expensive query
+        refetchOnWindowFocus: false,
     });
 
     const isLoading = habitsLoading || logsLoading;
@@ -155,8 +157,7 @@ export function StatisticsHub() {
                 <div className="space-y-3">
                     {stats.habitStats.map((stat) => {
                         const Icon = ICON_MAP[stat.habit.icon] ?? Trophy;
-                        const colorData = HABIT_COLORS.find((c) => c.value === stat.habit.color);
-                        const hexColor = colorData?.hex ?? "#c09ce0";
+                        const hexColor = resolveColorHex(stat.habit.color);
 
                         return (
                             <div key={stat.habit.id} className="bg-card rounded-3xl p-4 bubble-shadow">

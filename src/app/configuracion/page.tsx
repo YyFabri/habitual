@@ -31,7 +31,8 @@ import {
     MessageCircle,
     ChevronDown,
 } from "lucide-react";
-import { signOut } from "@/services/authService";
+import { signOut, getCurrentUser } from "@/services/authService";
+import { updateProfile as firebaseUpdateProfile } from "firebase/auth";
 import { useEffect } from "react";
 
 // ─── Setting Row Component ──────────────────────────────────
@@ -257,6 +258,7 @@ function resizeImageToBase64(file: File, maxSize: number = 128): Promise<string>
 // ─── Main Settings Page ─────────────────────────────────────
 export default function ConfiguracionPage() {
     const user = useUserStore((s) => s.user);
+    const setUser = useUserStore((s) => s.setUser);
     const router = useRouter();
     const updateProfile = useUpdateUserProfile();
 
@@ -279,10 +281,22 @@ export default function ConfiguracionPage() {
 
     if (!user) return null;
 
-    const handleSaveName = () => {
+    const handleSaveName = async () => {
         const name = tempName.trim();
         if (name && name !== user.displayName) {
+            // Update Firestore profile
             updateProfile.mutate({ displayName: name });
+            // Also update Firebase Auth profile so it persists across sessions
+            const firebaseUser = getCurrentUser();
+            if (firebaseUser) {
+                try {
+                    await firebaseUpdateProfile(firebaseUser, { displayName: name });
+                } catch (e) {
+                    console.error("Error updating Firebase Auth displayName:", e);
+                }
+            }
+            // Update local store immediately
+            if (user) setUser({ ...user, displayName: name });
             hapticSuccess();
         }
         setEditingName(false);
@@ -306,8 +320,20 @@ export default function ConfiguracionPage() {
 
         try {
             hapticTap();
-            const base64 = await resizeImageToBase64(file, 128);
+            const base64 = await resizeImageToBase64(file, 200);
+            // Update Firestore profile
             updateProfile.mutate({ photoURL: base64 });
+            // Also update Firebase Auth profile
+            const firebaseUser = getCurrentUser();
+            if (firebaseUser) {
+                try {
+                    await firebaseUpdateProfile(firebaseUser, { photoURL: base64 });
+                } catch (e) {
+                    console.error("Error updating Firebase Auth photoURL:", e);
+                }
+            }
+            // Update local store immediately
+            if (user) setUser({ ...user, photoURL: base64 });
             hapticSuccess();
         } catch {
             alert("Error al procesar la imagen. Intentá con otra.");

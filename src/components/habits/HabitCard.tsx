@@ -1,12 +1,11 @@
-import { Habit, HabitLog } from "@/types/types";
+import { Habit, HabitLog, resolveColorHex } from "@/types/types";
 import { useToggleHabitLog } from "@/hooks/useHabits";
 import { useCallback, useRef } from "react";
-import { Check, Star, MoreVertical } from "lucide-react";
+import { Check, Star, MoreVertical, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SegmentedCircle } from "./SegmentedCircle";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
 import { fireConfetti } from "@/utils/confetti";
-import { HABIT_COLORS } from "@/types/types";
 import { ICON_MAP } from "@/utils/habitIcons";
 
 interface HabitCardProps {
@@ -24,8 +23,7 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
     const Icon = ICON_MAP[habit.icon] ?? Star;
 
     // Get the hex color for the SVG
-    const colorData = HABIT_COLORS.find((c) => c.value === habit.color);
-    const hexColor = colorData?.hex ?? "#c09ce0";
+    const hexColor = resolveColorHex(habit.color);
 
     const handleTap = useCallback(() => {
         hapticTap();
@@ -108,14 +106,19 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
 
                 {/* Text content */}
                 <div className="flex-1 text-left min-w-0">
-                    <h3
-                        className={cn(
-                            "font-semibold text-sm truncate transition-all duration-300",
-                            isComplete && "line-through opacity-60"
+                    <div className="flex items-center gap-1.5">
+                        <h3
+                            className={cn(
+                                "font-semibold text-sm truncate transition-all duration-300",
+                                isComplete && "line-through opacity-60"
+                            )}
+                        >
+                            {habit.name}
+                        </h3>
+                        {habit.notes && (
+                            <FileText className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
                         )}
-                    >
-                        {habit.name}
-                    </h3>
+                    </div>
                     <p
                         className={cn(
                             "text-xs mt-0.5 transition-colors duration-300",
