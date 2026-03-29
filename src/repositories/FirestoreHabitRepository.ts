@@ -56,6 +56,7 @@ export class FirestoreHabitRepository implements IHabitRepository {
             frequencySpecificDates: data.frequencySpecificDates,
             objective: data.type === "simple" ? 1 : data.objective,
             groups: data.groups,
+            priority: data.priority,
             notes: data.notes,
             subtasks: data.subtasks,
             archived: false,
