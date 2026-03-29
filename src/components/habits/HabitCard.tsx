@@ -1,7 +1,7 @@
-import { Habit, HabitLog, resolveColorHex } from "@/types/types";
-import { useToggleHabitLog } from "@/hooks/useHabits";
-import { useCallback, useRef } from "react";
-import { Check, Star, MoreVertical, FileText } from "lucide-react";
+import { Habit, HabitLog, resolveColorHex, type SubTask } from "@/types/types";
+import { useToggleHabitLog, useUpdateHabit } from "@/hooks/useHabits";
+import { useCallback, useRef, useState } from "react";
+import { Check, Star, MoreVertical, FileText, ChevronDown, ListChecks, Square, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SegmentedCircle } from "./SegmentedCircle";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
@@ -16,7 +16,9 @@ interface HabitCardProps {
 
 export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
     const toggleMutation = useToggleHabitLog();
+    const updateHabit = useUpdateHabit();
     const cardRef = useRef<HTMLButtonElement>(null);
+    const [expanded, setExpanded] = useState(false);
 
     const currentValue = log?.value ?? 0;
     const isComplete = currentValue >= habit.objective;
@@ -24,6 +26,10 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
 
     // Get the hex color for the SVG
     const hexColor = resolveColorHex(habit.color);
+
+    const hasDetails = !!habit.notes || (habit.subtasks && habit.subtasks.length > 0);
+    const subtasksDone = habit.subtasks?.filter((s) => s.completed).length ?? 0;
+    const subtasksTotal = habit.subtasks?.length ?? 0;
 
     const handleTap = useCallback(() => {
         hapticTap();
@@ -47,6 +53,24 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
         }
     }, [habit, currentValue, isComplete, toggleMutation]);
 
+    const handleToggleSubtask = useCallback((subtaskId: string) => {
+        hapticTap();
+        if (!habit.subtasks) return;
+        const updatedSubtasks = habit.subtasks.map((st) =>
+            st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        );
+        updateHabit.mutate({
+            habitId: habit.id,
+            data: { subtasks: updatedSubtasks },
+        });
+    }, [habit.id, habit.subtasks, updateHabit]);
+
+    const handleToggleExpand = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        hapticTap();
+        setExpanded((prev) => !prev);
+    }, []);
+
     const progressText =
         habit.type === "simple"
             ? isComplete
@@ -56,16 +80,18 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
 
     return (
         <div className="relative group">
+            {/* Main card area */}
             <button
                 ref={cardRef}
                 onClick={handleTap}
                 disabled={toggleMutation.isPending}
                 className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 pr-14", // Added padding right
+                    "w-full flex items-center gap-4 p-4 transition-all duration-300 pr-14",
                     "bg-card bubble-shadow hover:bubble-shadow-lg",
                     "active:scale-[0.97] disabled:opacity-70",
                     isComplete && "ring-2 ring-offset-2 ring-offset-background",
-                    "animate-[fade-in_0.3s_ease-out]"
+                    "animate-[fade-in_0.3s_ease-out]",
+                    expanded ? "rounded-t-3xl rounded-b-none" : "rounded-3xl"
                 )}
                 style={{
                     // @ts-expect-error -- CSS custom property
@@ -118,6 +144,16 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
                         {habit.notes && (
                             <FileText className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
                         )}
+                        {subtasksTotal > 0 && (
+                            <span className={cn(
+                                "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0",
+                                subtasksDone === subtasksTotal
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : "bg-muted text-muted-foreground"
+                            )}>
+                                {subtasksDone}/{subtasksTotal}
+                            </span>
+                        )}
                     </div>
                     <p
                         className={cn(
@@ -130,6 +166,25 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
                 </div>
             </button>
 
+            {/* Expand/collapse button (only if has details) */}
+            {hasDetails && (
+                <button
+                    onClick={handleToggleExpand}
+                    className={cn(
+                        "absolute right-10 p-1.5 text-muted-foreground/40 hover:text-foreground hover:bg-black/5 rounded-full transition-all z-20",
+                        expanded ? "top-4" : "top-1/2 -translate-y-1/2"
+                    )}
+                >
+                    <ChevronDown
+                        size={16}
+                        className={cn(
+                            "transition-transform duration-200",
+                            expanded && "rotate-180"
+                        )}
+                    />
+                </button>
+            )}
+
             {/* Context Menu Trigger */}
             <button
                 onClick={(e) => {
@@ -137,10 +192,86 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
                     hapticTap();
                     onOpenMenu(habit, e.currentTarget);
                 }}
-                className="absolute top-1/2 -translate-y-1/2 right-3 p-2 text-muted-foreground/50 hover:text-foreground hover:bg-black/5 rounded-full transition-colors z-20"
+                className={cn(
+                    "absolute right-3 p-2 text-muted-foreground/50 hover:text-foreground hover:bg-black/5 rounded-full transition-colors z-20",
+                    expanded ? "top-3.5" : "top-1/2 -translate-y-1/2"
+                )}
             >
                 <MoreVertical size={18} />
             </button>
+
+            {/* ─── Expanded Details Section ──────────────────────── */}
+            <div
+                className={cn(
+                    "overflow-hidden transition-all duration-300 ease-in-out",
+                    expanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                )}
+            >
+                <div className="bg-card rounded-b-3xl px-4 pb-4 pt-1 space-y-3 border-t border-border/30">
+                    {/* Notes */}
+                    {habit.notes && (
+                        <div className="animate-[fade-in_0.2s_ease-out]">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</span>
+                            </div>
+                            <p className="text-sm text-foreground/80 leading-relaxed bg-muted/30 rounded-2xl px-3.5 py-2.5 whitespace-pre-wrap">
+                                {habit.notes}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Subtasks */}
+                    {habit.subtasks && habit.subtasks.length > 0 && (
+                        <div className="animate-[fade-in_0.2s_ease-out]">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <ListChecks className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Sub-tareas ({subtasksDone}/{subtasksTotal})
+                                </span>
+                            </div>
+                            <div className="space-y-1">
+                                {habit.subtasks.map((st: SubTask) => (
+                                    <button
+                                        key={st.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleSubtask(st.id);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-start gap-2.5 px-3 py-2 rounded-xl transition-all",
+                                            "hover:bg-accent/50 active:scale-[0.98]",
+                                            st.completed && "opacity-60"
+                                        )}
+                                    >
+                                        {st.completed ? (
+                                            <CheckSquare
+                                                className="h-4.5 w-4.5 mt-0.5 flex-shrink-0 transition-colors"
+                                                style={{ color: hexColor }}
+                                            />
+                                        ) : (
+                                            <Square className="h-4.5 w-4.5 mt-0.5 flex-shrink-0 text-muted-foreground/40" />
+                                        )}
+                                        <div className="flex-1 text-left min-w-0">
+                                            <p className={cn(
+                                                "text-sm transition-all",
+                                                st.completed && "line-through text-muted-foreground"
+                                            )}>
+                                                {st.text}
+                                            </p>
+                                            {st.notes && (
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                                    {st.notes}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
