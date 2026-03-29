@@ -482,20 +482,105 @@ export function NewHabitDialog() {
 
                     {/* Frequency: Every X days */}
                     {watchFrequencyType === "every_x_days" && (
-                        <div className="space-y-2 animate-[slide-up_0.2s_ease-out]">
-                            <Label className="text-sm font-medium">Cada cuántos días</Label>
-                            <div className="flex items-center justify-center gap-4">
-                                <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10"
-                                    onClick={() => { hapticTap(); setValue("frequencyInterval", Math.max(2, watchFrequencyInterval - 1)); }}>
-                                    <Minus className="h-4 w-4" />
-                                </Button>
-                                <span className="text-3xl font-bold w-16 text-center tabular-nums">{watchFrequencyInterval}</span>
-                                <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10"
-                                    onClick={() => { hapticTap(); setValue("frequencyInterval", Math.min(365, watchFrequencyInterval + 1)); }}>
-                                    <Plus className="h-4 w-4" />
-                                </Button>
+                        <div className="space-y-4 animate-[slide-up_0.2s_ease-out]">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Cada cuántos días</Label>
+                                <div className="flex items-center justify-center gap-4">
+                                    <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10"
+                                        onClick={() => { hapticTap(); setValue("frequencyInterval", Math.max(2, watchFrequencyInterval - 1)); }}>
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-3xl font-bold w-16 text-center tabular-nums">{watchFrequencyInterval}</span>
+                                    <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10"
+                                        onClick={() => { hapticTap(); setValue("frequencyInterval", Math.min(365, watchFrequencyInterval + 1)); }}>
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground text-center">días entre cada repetición</p>
                             </div>
-                            <p className="text-xs text-muted-foreground text-center">días entre cada repetición</p>
+
+                            {/* Start day selector */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">¿Qué día empieza?</Label>
+                                <Controller
+                                    control={control}
+                                    name="frequencyStartDate"
+                                    render={({ field }) => {
+                                        // Calculate which weekday is selected from the stored date
+                                        const getSelectedDay = (): number | null => {
+                                            if (!field.value) return null;
+                                            const d = new Date(field.value + "T12:00:00");
+                                            // Convert JS day (0=Sun) to our format (0=Mon)
+                                            const jsDay = d.getDay();
+                                            return jsDay === 0 ? 6 : jsDay - 1;
+                                        };
+
+                                        const selectedDay = getSelectedDay();
+
+                                        const selectStartDay = (dayIndex: number) => {
+                                            hapticTap();
+                                            // dayIndex: 0=Mon, 1=Tue, ..., 6=Sun
+                                            // Find the next occurrence of this weekday
+                                            const today = new Date();
+                                            const todayJsDay = today.getDay(); // 0=Sun
+                                            // Convert our dayIndex to JS day
+                                            const targetJsDay = dayIndex === 6 ? 0 : dayIndex + 1;
+                                            let daysUntil = targetJsDay - todayJsDay;
+                                            if (daysUntil < 0) daysUntil += 7;
+                                            const startDate = new Date(today);
+                                            startDate.setDate(today.getDate() + daysUntil);
+                                            // Format as YYYY-MM-DD
+                                            const yyyy = startDate.getFullYear();
+                                            const mm = String(startDate.getMonth() + 1).padStart(2, "0");
+                                            const dd = String(startDate.getDate()).padStart(2, "0");
+                                            field.onChange(`${yyyy}-${mm}-${dd}`);
+                                        };
+
+                                        return (
+                                            <div>
+                                                <div className="grid grid-cols-7 gap-1.5">
+                                                    {DAY_LABELS.map((label, index) => {
+                                                        const isActive = selectedDay === index;
+                                                        // Check if this day is "today"
+                                                        const todayJsDay = new Date().getDay();
+                                                        const todayIndex = todayJsDay === 0 ? 6 : todayJsDay - 1;
+                                                        const isToday = index === todayIndex;
+
+                                                        return (
+                                                            <button
+                                                                key={index}
+                                                                type="button"
+                                                                onClick={() => selectStartDay(index)}
+                                                                className={cn(
+                                                                    "py-2 rounded-xl text-xs font-medium transition-all active:scale-90 relative",
+                                                                    isActive
+                                                                        ? "bg-primary text-primary-foreground"
+                                                                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                                                                )}
+                                                            >
+                                                                {label}
+                                                                {isToday && (
+                                                                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {field.value && (
+                                                    <p className="text-[11px] text-muted-foreground text-center mt-2">
+                                                        Empieza el{" "}
+                                                        {new Date(field.value + "T12:00:00").toLocaleDateString("es-AR", {
+                                                            weekday: "long",
+                                                            day: "numeric",
+                                                            month: "long",
+                                                        })}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
 
