@@ -17,6 +17,13 @@ import {
 import { db } from "./firebase";
 import type { Habit, HabitLog, User } from "@/types/types";
 
+// Firestore does NOT accept `undefined` values — strip them before writing
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([, v]) => v !== undefined)
+    ) as T;
+}
+
 // ─── Collection Refs ─────────────────────────────────────────
 
 function habitsCol(userId: string) {
@@ -89,7 +96,7 @@ export async function createHabit(
         userId,
         createdAt: new Date().toISOString(),
     };
-    await setDoc(ref, { ...newHabit, _serverTimestamp: serverTimestamp() });
+    await setDoc(ref, { ...stripUndefined(newHabit as unknown as Record<string, unknown>), _serverTimestamp: serverTimestamp() });
     return { id: ref.id, ...newHabit };
 }
 
@@ -98,7 +105,7 @@ export async function updateHabit(
     habitId: string,
     data: Partial<Habit>
 ): Promise<void> {
-    await updateDoc(doc(habitsCol(userId), habitId), data as DocumentData);
+    await updateDoc(doc(habitsCol(userId), habitId), stripUndefined(data as unknown as Record<string, unknown>) as DocumentData);
 }
 
 export async function batchUpdateHabits(
