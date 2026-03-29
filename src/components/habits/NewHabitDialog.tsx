@@ -47,6 +47,7 @@ export function NewHabitDialog() {
     const [customHex, setCustomHex] = useState("#c09ce0");
     const [showNotes, setShowNotes] = useState(false);
     const [newSpecificDate, setNewSpecificDate] = useState("");
+    const [formError, setFormError] = useState<string | null>(null);
 
     const editingHabit = useMemo(() =>
         habits?.find(h => h.id === editingHabitId),
@@ -167,6 +168,7 @@ export function NewHabitDialog() {
 
     const onSubmit = async (data: HabitFormData) => {
         hapticTap();
+        setFormError(null);
         try {
             if (editingHabitId) {
                 await updateHabit.mutateAsync({ habitId: editingHabitId, data: data as any });
@@ -175,9 +177,17 @@ export function NewHabitDialog() {
             }
             hapticSuccess();
             handleClose(false);
-        } catch {
-            // PremiumRequiredError is handled by the mutation's onError
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            setFormError(`Error al guardar: ${msg}`);
+            console.error("[NewHabitDialog] Submit error:", err);
         }
+    };
+
+    const onFormInvalid = (validationErrors: Record<string, unknown>) => {
+        const fields = Object.keys(validationErrors).join(", ");
+        setFormError(`Errores de validación en: ${fields}`);
+        console.error("[NewHabitDialog] Validation errors:", validationErrors);
     };
 
     const handleClose = (open: boolean) => {
@@ -227,7 +237,7 @@ export function NewHabitDialog() {
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-2">
+                <form onSubmit={handleSubmit(onSubmit, onFormInvalid)} className="space-y-5 mt-2">
                     {/* Name */}
                     <div className="space-y-2">
                         <Label htmlFor="name" className="text-sm font-medium">Nombre</Label>
@@ -726,6 +736,13 @@ export function NewHabitDialog() {
                             </p>
                         )}
                     </div>
+
+                    {/* Error display */}
+                    {formError && (
+                        <div className="rounded-2xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+                            {formError}
+                        </div>
+                    )}
 
                     {/* Submit */}
                     <Button
