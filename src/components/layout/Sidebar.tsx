@@ -17,6 +17,7 @@ import {
     LogOut,
     UserCircle,
     Sparkles,
+    Timer,
 } from "lucide-react";
 import { useHabitStore } from "@/store/useHabitStore";
 import { useUserStore } from "@/store/useUserStore";
@@ -90,6 +91,15 @@ export function Sidebar() {
                         onClick={() => {
                             setShowSidebar(false);
                             if (pathname !== "/estadisticas") router.push("/estadisticas");
+                        }}
+                    />
+                    <SidebarItem
+                        icon={Timer}
+                        label="Enfoque"
+                        active={pathname === "/enfoque"}
+                        onClick={() => {
+                            setShowSidebar(false);
+                            if (pathname !== "/enfoque") router.push("/enfoque");
                         }}
                     />
                     <SidebarItem

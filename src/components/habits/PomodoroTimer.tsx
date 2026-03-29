@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Play, Pause, RotateCcw, Coffee, Brain, X, Timer, Settings2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Coffee, Brain, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 type PomodoroPhase = "work" | "break";
 
 export function PomodoroTimer() {
-    const [isOpen, setIsOpen] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [workMinutes, setWorkMinutes] = useState(25);
     const [breakMinutes, setBreakMinutes] = useState(5);
@@ -34,7 +33,6 @@ export function PomodoroTimer() {
         intervalRef.current = setInterval(() => {
             setTimeLeft((prev) => {
                 if (prev <= 1) {
-                    // Timer complete
                     playCompletionSound();
                     hapticSuccess();
 
@@ -68,7 +66,7 @@ export function PomodoroTimer() {
             const gainNode = ctx.createGain();
             osc.connect(gainNode);
             gainNode.connect(ctx.destination);
-            osc.frequency.value = phase === "work" ? 523.25 : 659.25; // C5 or E5
+            osc.frequency.value = phase === "work" ? 523.25 : 659.25;
             gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
             osc.start(ctx.currentTime);
@@ -93,169 +91,176 @@ export function PomodoroTimer() {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
 
-    // Floating button when closed
-    if (!isOpen) {
-        return (
-            <button
-                onClick={() => { hapticTap(); setIsOpen(true); }}
-                className={cn(
-                    "fixed bottom-24 right-4 z-50",
-                    "h-14 w-14 rounded-full",
-                    "bg-gradient-to-br from-purple-500 to-indigo-600",
-                    "bubble-shadow-lg flex items-center justify-center",
-                    "hover:scale-110 active:scale-95 transition-all duration-200",
-                    isRunning && "animate-pulse"
-                )}
-                title="Pomodoro Timer"
-            >
-                <Timer className="h-6 w-6 text-white" />
-                {isRunning && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-400 rounded-full border-2 border-white" />
-                )}
-            </button>
-        );
-    }
+    const circleRadius = 90;
+    const circumference = 2 * Math.PI * circleRadius;
 
     return (
-        <div className="fixed bottom-24 right-4 z-50 w-72 animate-[slide-up_0.3s_ease-out]">
-            <div className="bg-card rounded-3xl bubble-shadow-lg p-6 relative overflow-hidden">
-                {/* Background gradient based on phase */}
-                <div
-                    className={cn(
-                        "absolute inset-0 opacity-5 transition-colors duration-500",
-                        phase === "work" ? "bg-gradient-to-br from-red-500 to-orange-500" : "bg-gradient-to-br from-emerald-500 to-teal-500"
-                    )}
-                />
-
-                {/* Close button */}
+        <div className="flex flex-col items-center gap-8 py-6 animate-[fade-in_0.3s_ease-out]">
+            {/* Phase toggle */}
+            <div className="flex items-center gap-2 bg-card rounded-2xl p-1 bubble-shadow">
                 <button
-                    onClick={() => { hapticTap(); setIsOpen(false); }}
-                    className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors z-10"
-                >
-                    <X className="h-4 w-4" />
-                </button>
-
-                {/* Phase indicator */}
-                <div className="flex items-center gap-2 mb-4 relative">
-                    {phase === "work" ? (
-                        <Brain className="h-5 w-5 text-orange-500" />
-                    ) : (
-                        <Coffee className="h-5 w-5 text-emerald-500" />
+                    onClick={() => {
+                        if (isRunning) return;
+                        hapticTap();
+                        setPhase("work");
+                        setTimeLeft(workDurationSecs);
+                    }}
+                    className={cn(
+                        "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all",
+                        phase === "work"
+                            ? "bg-gradient-to-r from-orange-400 to-red-500 text-white bubble-shadow"
+                            : "text-muted-foreground hover:text-foreground"
                     )}
+                >
+                    <Brain className="h-4 w-4" />
+                    Enfoque
+                </button>
+                <button
+                    onClick={() => {
+                        if (isRunning) return;
+                        hapticTap();
+                        setPhase("break");
+                        setTimeLeft(breakDurationSecs);
+                    }}
+                    className={cn(
+                        "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all",
+                        phase === "break"
+                            ? "bg-gradient-to-r from-emerald-400 to-teal-500 text-white bubble-shadow"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    <Coffee className="h-4 w-4" />
+                    Descanso
+                </button>
+            </div>
+
+            {/* Circular timer */}
+            <div className="relative flex items-center justify-center">
+                <svg width="220" height="220" className="transform -rotate-90">
+                    {/* Background circle */}
+                    <circle
+                        cx="110" cy="110" r={circleRadius}
+                        fill="none"
+                        stroke="currentColor"
+                        className="text-muted/20"
+                        strokeWidth="8"
+                    />
+                    {/* Progress circle */}
+                    <circle
+                        cx="110" cy="110" r={circleRadius}
+                        fill="none"
+                        stroke={phase === "work" ? "#f97316" : "#10b981"}
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={circumference * (1 - progress / 100)}
+                        className="transition-all duration-1000 ease-linear"
+                    />
+                </svg>
+                {/* Time display */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-5xl font-bold tabular-nums tracking-tight">
+                        {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+                    </span>
                     <span className={cn(
-                        "text-sm font-semibold uppercase tracking-wider",
-                        phase === "work" ? "text-orange-500" : "text-emerald-500"
+                        "text-xs font-medium mt-1 uppercase tracking-widest",
+                        phase === "work" ? "text-orange-500/70" : "text-emerald-500/70"
                     )}>
-                        {phase === "work" ? "Enfoque" : "Descanso"}
+                        {phase === "work" ? "Concentración" : "Descansá"}
                     </span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                        sesión #{sessions + 1}
-                    </span>
-                </div>
-
-                {/* Circular progress */}
-                <div className="relative flex items-center justify-center my-4">
-                    <svg width="140" height="140" className="transform -rotate-90">
-                        {/* Background circle */}
-                        <circle
-                            cx="70" cy="70" r="60"
-                            fill="none"
-                            stroke="currentColor"
-                            className="text-muted/30"
-                            strokeWidth="6"
-                        />
-                        {/* Progress circle */}
-                        <circle
-                            cx="70" cy="70" r="60"
-                            fill="none"
-                            stroke={phase === "work" ? "#f97316" : "#10b981"}
-                            strokeWidth="6"
-                            strokeLinecap="round"
-                            strokeDasharray={2 * Math.PI * 60}
-                            strokeDashoffset={2 * Math.PI * 60 * (1 - progress / 100)}
-                            className="transition-all duration-1000 ease-linear"
-                        />
-                    </svg>
-                    {/* Time display */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-bold tabular-nums">
-                            {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Settings Overlay */}
-                {showSettings && (
-                    <div className="absolute inset-0 z-20 bg-card p-6 bubble-shadow-lg flex flex-col justify-center animate-[fade-in_0.2s_ease-out]">
-                        <button
-                            onClick={() => setShowSettings(false)}
-                            className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                        <h4 className="font-semibold mb-4">Configuración</h4>
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs text-orange-500 font-bold">MINUTOS DE ENFOQUE</Label>
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    max={120}
-                                    value={workMinutes}
-                                    className="bg-muted/50 border-0 h-10 rounded-xl"
-                                    onChange={(e) => {
-                                        const val = Math.max(1, parseInt(e.target.value) || 25);
-                                        setWorkMinutes(val);
-                                        if (phase === "work" && !isRunning) setTimeLeft(val * 60);
-                                    }}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs text-emerald-500 font-bold">MINUTOS DE DESCANSO</Label>
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    max={60}
-                                    value={breakMinutes}
-                                    className="bg-muted/50 border-0 h-10 rounded-xl"
-                                    onChange={(e) => {
-                                        const val = Math.max(1, parseInt(e.target.value) || 5);
-                                        setBreakMinutes(val);
-                                        if (phase === "break" && !isRunning) setTimeLeft(val * 60);
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Controls */}
-                <div className="flex items-center justify-center gap-3 mt-2 relative z-10">
-                    <button
-                        onClick={resetTimer}
-                        className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all active:scale-90"
-                    >
-                        <RotateCcw className="h-4 w-4" />
-                    </button>
-                    <button
-                        onClick={toggleTimer}
-                        className={cn(
-                            "h-14 w-14 rounded-full flex items-center justify-center transition-all active:scale-90 bubble-shadow",
-                            phase === "work"
-                                ? "bg-gradient-to-br from-orange-400 to-red-500 text-white"
-                                : "bg-gradient-to-br from-emerald-400 to-teal-500 text-white"
-                        )}
-                    >
-                        {isRunning ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
-                    </button>
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all active:scale-90"
-                    >
-                        <Settings2 className="h-4 w-4" />
-                    </button>
                 </div>
             </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-4">
+                <button
+                    onClick={resetTimer}
+                    className="h-12 w-12 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all active:scale-90 bg-card bubble-shadow"
+                >
+                    <RotateCcw className="h-5 w-5" />
+                </button>
+                <button
+                    onClick={toggleTimer}
+                    className={cn(
+                        "h-18 w-18 rounded-full flex items-center justify-center transition-all active:scale-90 bubble-shadow-lg",
+                        phase === "work"
+                            ? "bg-gradient-to-br from-orange-400 to-red-500 text-white"
+                            : "bg-gradient-to-br from-emerald-400 to-teal-500 text-white"
+                    )}
+                    style={{ height: "72px", width: "72px" }}
+                >
+                    {isRunning ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+                </button>
+                <button
+                    onClick={() => { hapticTap(); setShowSettings(!showSettings); }}
+                    className="h-12 w-12 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all active:scale-90 bg-card bubble-shadow"
+                >
+                    <Settings2 className="h-5 w-5" />
+                </button>
+            </div>
+
+            {/* Sessions counter */}
+            {sessions > 0 && (
+                <div className="flex items-center gap-1.5 animate-[fade-in_0.3s_ease-out]">
+                    {Array.from({ length: Math.min(sessions, 8) }).map((_, i) => (
+                        <div
+                            key={i}
+                            className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500"
+                        />
+                    ))}
+                    {sessions > 8 && (
+                        <span className="text-xs text-muted-foreground ml-1">+{sessions - 8}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground ml-2">
+                        {sessions} {sessions === 1 ? "sesión" : "sesiones"} completada{sessions === 1 ? "" : "s"}
+                    </span>
+                </div>
+            )}
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <div className="w-full max-w-xs bg-card rounded-3xl bubble-shadow p-5 relative animate-[slide-up_0.2s_ease-out]">
+                    <button
+                        onClick={() => setShowSettings(false)}
+                        className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                    <h4 className="font-semibold mb-4 text-sm">Configurar tiempos</h4>
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs text-orange-500 font-bold uppercase">Minutos de enfoque</Label>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={120}
+                                value={workMinutes}
+                                className="bg-muted/50 border-0 h-10 rounded-xl"
+                                onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value) || 25);
+                                    setWorkMinutes(val);
+                                    if (phase === "work" && !isRunning) setTimeLeft(val * 60);
+                                }}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs text-emerald-500 font-bold uppercase">Minutos de descanso</Label>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={60}
+                                value={breakMinutes}
+                                className="bg-muted/50 border-0 h-10 rounded-xl"
+                                onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value) || 5);
+                                    setBreakMinutes(val);
+                                    if (phase === "break" && !isRunning) setTimeLeft(val * 60);
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
