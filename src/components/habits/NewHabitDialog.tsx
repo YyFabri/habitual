@@ -22,7 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { hapticTap, hapticSuccess } from "@/utils/haptics";
 import { cn } from "@/lib/utils";
 import { Check, Star, Minus, Plus, Lock, Trash2, FileText, X } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { ICON_MAP } from "@/utils/habitIcons";
 
 const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -152,6 +152,7 @@ export function NewHabitDialog() {
     // ─── Subtask helpers ───────────────────────
     const [newSubtaskText, setNewSubtaskText] = useState("");
     const [newSubtaskNotes, setNewSubtaskNotes] = useState("");
+    const subtaskInputRef = useRef<HTMLDivElement>(null);
 
     const addSubtask = () => {
         const text = newSubtaskText.trim();
@@ -160,6 +161,10 @@ export function NewHabitDialog() {
         setValue("subtasks", [...watchSubtasks, { id, text, notes: newSubtaskNotes, completed: false }]);
         setNewSubtaskText("");
         setNewSubtaskNotes("");
+        // Scroll the input area into view after adding
+        setTimeout(() => {
+            subtaskInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 100);
     };
 
     const removeSubtask = (id: string) => {
@@ -786,14 +791,14 @@ export function NewHabitDialog() {
                                     <div key={st.id} className="flex items-start gap-2 bg-muted/30 rounded-xl px-3 py-2">
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm">{st.text}</p>
-                                            {st.notes && <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{st.notes}</p>}
+                                            {st.notes && <p className="text-[10px] text-muted-foreground mt-0.5">{st.notes}</p>}
                                         </div>
                                         <button type="button" onClick={() => removeSubtask(st.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors mt-0.5">
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
                                 ))}
-                                <div className="flex flex-col gap-2 bg-muted/10 p-2 rounded-xl">
+                                <div ref={subtaskInputRef} className="flex flex-col gap-2 bg-muted/10 p-2 rounded-xl">
                                     <Input
                                         placeholder="Nueva sub-tarea..."
                                         value={newSubtaskText}

@@ -1,6 +1,6 @@
 import { Habit, HabitLog, resolveColorHex, type SubTask } from "@/types/types";
 import { useToggleHabitLog, useUpdateHabit } from "@/hooks/useHabits";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useMemo } from "react";
 import { Check, Star, MoreVertical, FileText, ChevronDown, ListChecks, Square, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SegmentedCircle } from "./SegmentedCircle";
@@ -19,6 +19,7 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
     const updateHabit = useUpdateHabit();
     const cardRef = useRef<HTMLButtonElement>(null);
     const [expanded, setExpanded] = useState(false);
+    const [expandedSubtaskNotes, setExpandedSubtaskNotes] = useState<Set<string>>(new Set());
 
     const currentValue = log?.value ?? 0;
     const isComplete = currentValue >= habit.objective;
@@ -260,9 +261,29 @@ export function HabitCard({ habit, log, onOpenMenu }: HabitCardProps) {
                                                 {st.text}
                                             </p>
                                             {st.notes && (
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                                                    {st.notes}
-                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedSubtaskNotes(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(st.id)) next.delete(st.id);
+                                                            else next.add(st.id);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className="text-left w-full group/note"
+                                                >
+                                                    <p className={cn(
+                                                        "text-[10px] text-muted-foreground mt-0.5 transition-all",
+                                                        !expandedSubtaskNotes.has(st.id) && "line-clamp-2"
+                                                    )}>
+                                                        {st.notes}
+                                                    </p>
+                                                    <span className="text-[9px] text-primary/60 group-hover/note:text-primary transition-colors">
+                                                        {expandedSubtaskNotes.has(st.id) ? "Ver menos" : "Ver más"}
+                                                    </span>
+                                                </button>
                                             )}
                                         </div>
                                     </button>
